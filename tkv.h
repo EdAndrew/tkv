@@ -1,3 +1,5 @@
+#ifndef __TKV_H
+#define __TKV_H
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -14,4 +16,7 @@ struct KVDict {
     int (*hash)(int, int);
 };
 
-int primeTable[] = {2, 3, 5, 7, 11, 13, 17, 19, 23, 29};
+extern const int primeTable[];
+
+int test();
+#endif

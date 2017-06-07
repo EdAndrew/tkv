@@ -1,5 +1,7 @@
 #include "tkv.h"
 
+const int primeTable[] = {2, 3, 5, 7, 11, 13, 17, 19, 23, 29};
+
 struct KVDict * kvspace;
 
 int simpleHash(int key, int size) {
@@ -62,7 +64,7 @@ struct KVDict * initKVDict(int _size, int (*_hash)(int, int)) {
     return dict;
 }
 
-struct * getEntry(int _key, struct KVDict *_dict) {
+struct KVEntry * getEntry(int _key, struct KVDict *_dict) {
     int pos;
     pos = _dict->hash(_key, _dict->size); 
     return _dict->head[pos];
@@ -78,6 +80,7 @@ int setKV(int _key, const char *_value, int _len, struct KVDict *_dict) {
             printf("SetKV fail.\n");
             return 1;
         }
+        _dict->head[_dict->hash(_key, _dict->size)] = entry;
     } else {
         oldValue = entry->value;
         entry->value = (char *)malloc(sizeof(char) * _len);
@@ -99,6 +102,7 @@ int setKV(int _key, const char *_value, int _len, struct KVDict *_dict) {
 
 int getKV(int _key, struct KVDict *_dict, char *retValue, int *retLen) {
     struct KVEntry *entry;
+    entry = getEntry(_key, _dict);
     if (entry == NULL) {
         printf("No such key.\n");
         return 1;
@@ -117,38 +121,26 @@ int getKV(int _key, struct KVDict *_dict, char *retValue, int *retLen) {
 }
 
 int removeKV(int _key, struct KVDict *_dict) {
-    
+    struct KVEntry *entry;
+    entry = getEntry(_key, _dict);
+    if (entry == NULL) {
+        printf("The key is not found.\n"); 
+        return 1;
+    }
+    if (entry->value == NULL) {
+        printf("The value of key-value is NULL.\n"); 
+        return 2;
+    }
+
+    free(entry->value);
+    entry->value = NULL;
+    free(entry);
+    _dict->head[_dict->hash(_key, _dict->size)] = NULL;
     return 0;
 }
-
 
 int init() {
     kvspace = initKVDict(11, simpleHash);
-    return 0;
-}
-
-int test() {
-    int flag;
-    int len, testLen;
-    const char *testValue;
-    char value[256];
-
-    testValue = "hello world";
-    testLen = strlen(testValue);
-    setKV(1, testValue, strlen(testValue), kvspace);
-    getKV(1, kvspace, value, &len);
-
-    int i = 0;
-    int testAmount = 1;
-    flag = !strcmp(testValue, value) && testLen == len;
-    printf("K-V is %d - %s, len is %d, real K-V is %d - %s, len is %d\n", 1, testValue, testLen, 1, value, len);
-    if (!flag) {
-        printf("Bug: K-V is %d - %s, len is %d, but real K-V is %d - %s, real len is %d\n", 1, testValue, testLen, 1, value, len);
-    } else {
-        ++i;
-    }
-
-    printf("%d/%d test.\n", i, testAmount);
     return 0;
 }
 
