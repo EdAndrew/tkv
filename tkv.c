@@ -62,25 +62,31 @@ struct KVDict * initKVDict(int _size, int (*_hash)(int, int)) {
     return dict;
 }
 
-int setKV(int _key, const char *_value, int _len, struct KVDict *_dict) {
+struct * getEntry(int _key, struct KVDict *_dict) {
     int pos;
+    pos = _dict->hash(_key, _dict->size); 
+    return _dict->head[pos];
+}
+
+int setKV(int _key, const char *_value, int _len, struct KVDict *_dict) {
     char *oldValue;
-    pos = _dict->hash(_key, _dict->size);
-    if (_dict->head[pos] == NULL) {
-        _dict->head[pos] = initKVEntry(_key, _value, _len);
-        if (_dict->head[pos] == NULL) {
+    struct KVEntry *entry;
+    entry = getEntry(_key, _dict);
+    if (entry == NULL) {
+        entry = initKVEntry(_key, _value, _len);
+        if (entry == NULL) {
             printf("SetKV fail.\n");
             return 1;
         }
     } else {
-        oldValue = _dict->head[pos]->value;
-        _dict->head[pos]->value = (char *)malloc(sizeof(char) * _len);
-        if (_dict->head[pos]->value = NULL) {
+        oldValue = entry->value;
+        entry->value = (char *)malloc(sizeof(char) * _len);
+        if (entry->value = NULL) {
             printf("SetKV fail.\n");
             return 2;
         }   
-        _dict->head[pos]->len = _len;
-        char *des = _dict->head[pos]->value;
+        entry->len = _len;
+        char *des = entry->value;
         while (_len--) {
             *des = *_value;
             ++des;
@@ -92,21 +98,26 @@ int setKV(int _key, const char *_value, int _len, struct KVDict *_dict) {
 }
 
 int getKV(int _key, struct KVDict *_dict, char *retValue, int *retLen) {
-    int pos = _dict->hash(_key, _dict->size);
-    if (_dict->head[pos] == NULL) {
+    struct KVEntry *entry;
+    if (entry == NULL) {
         printf("No such key.\n");
         return 1;
     }
-    if (_dict->head[pos]->value == NULL) {
+    if (entry->value == NULL) {
         printf("Value of K-V entry is empty.\n");
         return 2;
     }   
     
-    *retLen = _dict->head[pos]->len;
+    *retLen = entry->len;
     int i;
-    for (i = 0; i < _dict->head[pos]->len; ++i) {
-        retValue[i] = _dict->head[pos]->value[i];
+    for (i = 0; i < entry->len; ++i) {
+        retValue[i] = entry->value[i];
     }
+    return 0;
+}
+
+int removeKV(int _key, struct KVDict *_dict) {
+    
     return 0;
 }
 
