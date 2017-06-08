@@ -144,8 +144,45 @@ int init() {
     return 0;
 }
 
-int main() {
-    init();
-    test();
+void help(char *progName) {
+    printf("Usage: %s [-t --test] [-h --help] [-p --port port]\n", progName);
+}
+
+int main(int argc, char *argv[]) {
+    int opt;
+    int optionIndex;
+    static struct option longOptions[] = {
+        {"help", no_argument, NULL, 'h'},
+        {"test", no_argument, NULL, 't'},
+        {"port", required_argument, NULL, 'p'},
+        {0, 0, 0, 0}
+    };
+
+    /* Set opterr 0 to prevent getopt_long() print error messages to stderr*/
+    opterr = 0;
+    while ((opt = getopt_long(argc, argv, "htp:", longOptions, &optionIndex)) != -1) {
+        switch (opt) {
+            case 'h':
+                help(argv[0]);
+                return 0;
+                break;
+            case 't':
+                init();
+                test();
+                return 0;
+                break;
+            case 'p':
+                printf("-p %s\n", optarg);
+                break;
+            case '?':
+                help(argv[0]);
+                return 1;
+                break;
+            default:
+                help(argv[0]);
+                return 1;
+        }
+    }
+
     return 0;
 }

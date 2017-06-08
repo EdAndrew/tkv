@@ -6,8 +6,9 @@ CFLAGS = -g
 
 $(PROG): $(OBJS)
 	$(CC)  $(CFLAGS) -o $@ $^
+	rm $^
 
 $(OBJS): tkv.h
 
 clean:
-	rm $(PROG) $(OBJS)
+	rm $(PROG)
