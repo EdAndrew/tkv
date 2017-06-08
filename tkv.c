@@ -148,9 +148,51 @@ void help(char *progName) {
     printf("Usage: %s [-t --test] [-h --help] [-p --port port]\n", progName);
 }
 
+int becomeDaemon() {
+    int ret;
+    int i;
+    pid_t pid;
+    
+    /* Make child process to be adopted into init */
+    pid = fork();
+    if (pid == -1) {
+        printf("Daemon fail in fork().\n");
+        return 1;
+    } else if (pid != 0) {
+        exit(EXIT_SUCCESS);
+    } 
+
+    /* Create a new session to escape terminate */
+    pid = setsid();
+    if (pid == (pid_t)-1) {
+        printf("Daemon fail in setsid().\n");
+        return 2;
+    }
+
+    /* Change working directory */
+    ret = chdir("/");
+    if (ret != 0) {
+        printf("Daemon fail in chdir().\n");
+        return 3;
+    }
+
+    /* Close all open file descriptions */
+    for (i = 0; i < NR_OPEN; ++i) {
+        close(i);
+    }
+
+    /* Dedirect stdin, stdout, stderr to /dev/null */
+    open("/dev/null", O_RDWR);
+    dup(0);
+    dup(0);
+
+    return 0;
+}
+
 int main(int argc, char *argv[]) {
     int opt;
     int optionIndex;
+    int ret;
     static struct option longOptions[] = {
         {"help", no_argument, NULL, 'h'},
         {"test", no_argument, NULL, 't'},
@@ -182,6 +224,16 @@ int main(int argc, char *argv[]) {
                 help(argv[0]);
                 return 1;
         }
+    }
+
+    ret = becomeDaemon();
+    if (ret) {
+        printf("Daemon fail.\n");
+        return 1;
+    }
+
+    while(1) {
+        sleep(10);
     }
 
     return 0;
