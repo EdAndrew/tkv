@@ -9,6 +9,9 @@
 #include <getopt.h>
 #include <fcntl.h>
 #include <linux/limits.h>
+#include "server.h"
+
+extern FILE *logFd;
 
 struct KVEntry {
     int key;

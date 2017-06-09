@@ -2,6 +2,7 @@
 
 const int primeTable[] = {2, 3, 5, 7, 11, 13, 17, 19, 23, 29};
 
+FILE *logFile;
 struct KVDict * kvspace;
 
 int simpleHash(int key, int size) {
@@ -20,14 +21,14 @@ int largerPrime(int prime) {
 struct KVEntry * initKVEntry(int _key, const char *_value, int _len) {
     struct KVEntry *entry = (struct KVEntry *)malloc(sizeof(struct KVEntry));
     if (entry == NULL) {
-        printf("Init KVEntry fail.\n");
+        fprintf(logFile, "Init KVEntry fail.\n");
         return NULL;
     }
     entry->key = _key;
     entry->len = _len;
     entry->value = (char *)malloc(sizeof(_len)); 
     if (entry->value == NULL) {
-        printf("Init KVEntry fail.\n");
+        fprintf(logFile, "Init KVEntry fail.\n");
         return NULL;
     }
 
@@ -44,7 +45,7 @@ struct KVEntry * initKVEntry(int _key, const char *_value, int _len) {
 struct KVDict * initKVDict(int _size, int (*_hash)(int, int)) {
     struct KVDict *dict = (struct KVDict *)malloc(sizeof(struct KVDict));
     if (dict == NULL) {
-        printf("Init KVDict fail.\n");
+        fprintf(logFile, "Init KVDict fail.\n");
         return NULL;
     }
     dict->hash = _hash;
@@ -54,7 +55,7 @@ struct KVDict * initKVDict(int _size, int (*_hash)(int, int)) {
     dict->size = prime;
     dict->head = (struct KVEntry **)malloc(sizeof(struct KVEntry *) * prime);
     if (dict->head == NULL) {
-        printf("Init KVDict fail.\n");
+        fprintf(logFile, "Init KVDict fail.\n");
         return NULL;
     }
     int i;
@@ -77,7 +78,7 @@ int setKV(int _key, const char *_value, int _len, struct KVDict *_dict) {
     if (entry == NULL) {
         entry = initKVEntry(_key, _value, _len);
         if (entry == NULL) {
-            printf("SetKV fail.\n");
+            fprintf(logFile, "SetKV fail.\n");
             return 1;
         }
         _dict->head[_dict->hash(_key, _dict->size)] = entry;
@@ -85,7 +86,7 @@ int setKV(int _key, const char *_value, int _len, struct KVDict *_dict) {
         oldValue = entry->value;
         entry->value = (char *)malloc(sizeof(char) * _len);
         if (entry->value = NULL) {
-            printf("SetKV fail.\n");
+            fprintf(logFile, "SetKV fail.\n");
             return 2;
         }   
         entry->len = _len;
@@ -104,11 +105,11 @@ int getKV(int _key, struct KVDict *_dict, char *retValue, int *retLen) {
     struct KVEntry *entry;
     entry = getEntry(_key, _dict);
     if (entry == NULL) {
-        printf("No such key.\n");
+        fprintf(logFile, "No such key.\n");
         return 1;
     }
     if (entry->value == NULL) {
-        printf("Value of K-V entry is empty.\n");
+        fprintf(logFile, "Value of K-V entry is empty.\n");
         return 2;
     }   
     
@@ -124,11 +125,11 @@ int removeKV(int _key, struct KVDict *_dict) {
     struct KVEntry *entry;
     entry = getEntry(_key, _dict);
     if (entry == NULL) {
-        printf("The key is not found.\n"); 
+        fprintf(logFile, "The key is not found.\n"); 
         return 1;
     }
     if (entry->value == NULL) {
-        printf("The value of key-value is NULL.\n"); 
+        fprintf(logFile, "The value of key-value is NULL.\n"); 
         return 2;
     }
 
@@ -145,7 +146,7 @@ int init() {
 }
 
 void help(char *progName) {
-    printf("Usage: %s [-t --test] [-h --help] [-p --port port]\n", progName);
+    fprintf(logFile, "Usage: %s [-t --test] [-h --help] [-p --port port]\n", progName);
 }
 
 int becomeDaemon() {
@@ -156,7 +157,7 @@ int becomeDaemon() {
     /* Make child process to be adopted into init */
     pid = fork();
     if (pid == -1) {
-        printf("Daemon fail in fork().\n");
+        fprintf(stderr, "Daemon fail in fork().\n");
         return 1;
     } else if (pid != 0) {
         exit(EXIT_SUCCESS);
@@ -165,14 +166,14 @@ int becomeDaemon() {
     /* Create a new session to escape terminate */
     pid = setsid();
     if (pid == (pid_t)-1) {
-        printf("Daemon fail in setsid().\n");
+        fprintf(stderr, "Daemon fail in setsid().\n");
         return 2;
     }
 
     /* Change working directory */
     ret = chdir("/");
     if (ret != 0) {
-        printf("Daemon fail in chdir().\n");
+        fprintf(stderr, "Daemon fail in chdir().\n");
         return 3;
     }
 
@@ -189,10 +190,22 @@ int becomeDaemon() {
     return 0;
 }
 
+int initLog() {
+    char *logPath;
+    logPath = "/home/jiahao/tkv.log";
+    logFile = fopen(logPath, "a");
+    if (logFile == NULL) {
+        return -1;
+    }
+
+    return 0;
+}
+
 int main(int argc, char *argv[]) {
     int opt;
     int optionIndex;
     int ret;
+    int listenFd;
     static struct option longOptions[] = {
         {"help", no_argument, NULL, 'h'},
         {"test", no_argument, NULL, 't'},
@@ -214,7 +227,7 @@ int main(int argc, char *argv[]) {
                 return 0;
                 break;
             case 'p':
-                printf("-p %s\n", optarg);
+                fprintf(logFile, "-p %s\n", optarg);
                 break;
             case '?':
                 help(argv[0]);
@@ -226,15 +239,27 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    ret = becomeDaemon();
-    if (ret) {
-        printf("Daemon fail.\n");
-        return 1;
+
+    /* Runing as Daemon */
+    if (becomeDaemon()) {
+        fprintf(logFile, "Daemon fail.\n");
+        return -1;
+    }
+    
+    /* Init log */
+    if (initLog() < 0) {
+        fprintf(stderr, "Init log fail.\n");
+        return -1;
     }
 
-    while(1) {
-        sleep(10);
+    /* Init server socket through binding host and port */
+    if ((listenFd = serverInit()) < 0) {
+        fprintf(logFile, "Server Init fail.\n");
+        return -1;
     }
+   
+    /* Start server loop */ 
+    serverRun();
 
     return 0;
 }
