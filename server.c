@@ -2,12 +2,96 @@
 
 int serverPort;
 
+int answer(int fd, const  char *buf) {
+    char *pos;
+    int nr, sum;
+
+    sum = strlen(buf);
+    pos = (char *)buf; 
+    while ((nr = write(fd, pos, sum)) < sum) {
+        pos += nr; 
+        sum -= nr;
+    }
+
+    return 0;
+}
+
+int judgeDigitStr(const char *str) {
+    int i;
+    for (i = 0; i < strlen(str); ++i) {
+        if (!isdigit(str[i])) {
+            return -1;
+        }
+    }
+    return 0;
+}
+
+int doSet(const char *key, const char *value) {
+    int _key, valueLen;
+
+    /* Judge whether key is numeric string */
+    if (judgeDigitStr(key)) {
+        return -1;
+    }
+
+    _key = atoi(key);
+    valueLen = strlen(value);
+
+    if (setKV(_key, value, valueLen, kvspace)) {
+        return -1;
+    }
+
+    return 0;
+}
+
+int doGet(const char *key, char *value, int *valueLen) {
+    int  _key;
+
+    /* Judge whether key is numeric string */
+    if (judgeDigitStr(key)) {
+        fprintf(logFile, "doGet() fail: in judgeDigitStr().\n");
+        return -1;
+    }
+
+    _key = atoi(key);
+    if (getKV(_key, kvspace, value, valueLen)) {
+        fprintf(logFile, "doGet() fail: in getKV().\n");
+        return -1;
+    }
+
+    return 0;
+}
+
+int doDel(const char *key) {
+    int _key;
+
+    if (judgeDigitStr(key)) {
+        return -1;
+    }
+
+    _key = atoi(key);
+    if (removeKV(_key, kvspace)) {
+        return -1;
+    }
+
+    return 0;
+}
+
+int doWrong(int fd) {
+    answer(fd, "Format Error");
+    return 0;
+}
+
 int doFileEvent(int fd) {
     int nr, sum = 0;
-    char buf[1024];
+    char buf[80000];
     char *pos = buf;
+    char motion[128], key[128], value[65536];
+    int valueLen;
+    char *delim = " ", *end = "\r\n", *token;
 
-    while ((nr = read(fd, pos, 1024)) > 0) {
+    /* Recieve client command */
+    while ((nr = read(fd, pos, 80000)) > 0) {
         pos += nr;
         sum += nr;
         if (*(pos-1) == '\n') {
@@ -15,14 +99,54 @@ int doFileEvent(int fd) {
         }
     }
    
-    pos = buf; 
-    while ((nr = write(fd, pos, sum)) < sum) {
-        pos += nr; 
-        sum -= nr;
+    /*  Resolve motion from client command */
+    token = strtok(buf, delim);
+    strcpy(motion, token); 
+    
+    /* Distinguish motion between SET, GET, DEL */
+    if (strcasecmp(motion, "GET") == 0) {
+        /* Extract the last sentence and remove final \r\n */
+        token = strtok(NULL, delim);
+        token = strtok(token, end);
+        strcpy(key, token);
+        if (doGet(key, value, &valueLen)) {
+            doWrong(fd);
+            goto err1;
+        }
+        answer(fd, value);
+
+    } else if (strcasecmp(motion, "SET") == 0) {
+        token = strtok(NULL, delim);
+        strcpy(key, token);
+        token = strtok(NULL, delim);
+        token = strtok(token, end);
+        strcpy(value, token);
+        if (doSet(key, value)) {
+            doWrong(fd);
+            goto err1;
+        }
+        answer(fd, "SetOK");
+
+    } else if (strcasecmp(motion, "DEL") == 0) {
+        token = strtok(NULL, delim);
+        token = strtok(token, end);
+        strcpy(key, token);
+        if (doDel(key)) {
+            doWrong(fd);
+            goto err1;
+        }
+        answer(fd, "DelOK");
+
+    } else {
+        fprintf(logFile, "doFileEvent() fail: Paser fail.\n");
+        doWrong(fd);
     }
-   
+  
+err1: 
     close(fd); 
+    return 0;
 }
+
 
 int doTimerEvent() {
     int fd;

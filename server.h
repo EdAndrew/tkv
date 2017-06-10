@@ -4,6 +4,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <ctype.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
@@ -17,6 +18,7 @@
 
 extern int serverPort;
 extern FILE *logFile;
+extern struct KVDict *kvspace;
 int serverInit();
 int serverRun();
 #endif

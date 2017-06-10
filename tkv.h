@@ -26,6 +26,9 @@ struct KVDict {
 };
 
 extern const int primeTable[];
+int setKV(int _key, const char *_value, int _len, struct KVDict *_dict);
+int getKV(int _key, struct KVDict *_dict, char *retValue, int *retLen);
+int removeKV(int _key, struct KVDict *_dict);
 
 int test();
 #endif

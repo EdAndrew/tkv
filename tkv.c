@@ -140,8 +140,11 @@ int removeKV(int _key, struct KVDict *_dict) {
     return 0;
 }
 
-int init() {
+int initKVSpace() {
     kvspace = initKVDict(11, simpleHash);
+    if (kvspace == NULL) {
+        return -1;
+    }
     return 0;
 }
 
@@ -222,7 +225,7 @@ int main(int argc, char *argv[]) {
                 return 0;
                 break;
             case 't':
-                init();
+                initKVSpace();
                 test();
                 return 0;
                 break;
@@ -241,14 +244,20 @@ int main(int argc, char *argv[]) {
 
 
     /* Runing as Daemon */
-    if (becomeDaemon()) {
-        fprintf(logFile, "Daemon fail.\n");
-        return -1;
-    }
-    
+    //if (becomeDaemon()) {
+    //    fprintf(logFile, "Daemon fail.\n");
+    //    return -1;
+    //}
+
     /* Init log */
     if (initLog() < 0) {
         fprintf(stderr, "Init log fail.\n");
+        return -1;
+    }
+
+    /* Init key-value space */
+    if (initKVSpace()) {
+        fprintf(logFile, "Server Init fail.\n");
         return -1;
     }
 
