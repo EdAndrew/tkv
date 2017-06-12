@@ -85,7 +85,7 @@ int setKV(int _key, const char *_value, int _len, struct KVDict *_dict) {
     } else {
         oldValue = entry->value;
         entry->value = (char *)malloc(sizeof(char) * _len);
-        if (entry->value = NULL) {
+        if (entry->value == NULL) {
             fprintf(logFile, "SetKV fail.\n");
             return 2;
         }   

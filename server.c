@@ -2,7 +2,7 @@
 
 int serverPort;
 
-int answer(int fd, const  char *buf) {
+int answer(int fd, const char *buf) {
     char *pos;
     int nr, sum;
 
@@ -90,6 +90,12 @@ int doFileEvent(int fd) {
     int valueLen;
     char *delim = " ", *end = "\r\n", *token;
 
+    /* Clean the buffer */
+    memset(buf, 0, sizeof(buf));
+    memset(motion, 0, sizeof(motion));
+    memset(key, 0, sizeof(key));
+    memset(value, 0, sizeof(value));
+
     /* Recieve client command */
     while ((nr = read(fd, pos, 80000)) > 0) {
         pos += nr;
@@ -97,6 +103,11 @@ int doFileEvent(int fd) {
         if (*(pos-1) == '\n') {
             break;
         }
+    }
+
+    /* Judge if client close the connecting */
+    if (nr == 0) {
+        return 1;
     }
    
     /*  Resolve motion from client command */
@@ -120,6 +131,12 @@ int doFileEvent(int fd) {
         strcpy(key, token);
         token = strtok(NULL, delim);
         token = strtok(token, end);
+        /* Avoid segment fault resulting from wrong format like 'SET 1' */
+        if (token == NULL) {
+            doWrong(fd);
+            goto err1;
+        }
+
         strcpy(value, token);
         if (doSet(key, value)) {
             doWrong(fd);
@@ -143,7 +160,6 @@ int doFileEvent(int fd) {
     }
   
 err1: 
-    close(fd); 
     return 0;
 }
 
@@ -199,6 +215,7 @@ int serverInit() {
 }
 
 int serverRun(listenFd) {
+    int i;
     int epfd, fd;
     int nrEvents;
     struct epoll_event event;
@@ -215,7 +232,7 @@ int serverRun(listenFd) {
         goto err1;
     }
 
-    event.data.fd = fd;
+    event.data.fd = listenFd;
     event.events = EPOLLIN;
     epoll_ctl(epfd, EPOLL_CTL_ADD, listenFd, &event);
 
@@ -232,13 +249,29 @@ int serverRun(listenFd) {
 
         /* Handle file events */
         if (nrEvents > 0) {
-            fd = accept(listenFd, NULL, NULL);
-            if (fd < 0) {
-                fprintf(logFile, "accept() error.\n");
-                goto err1;
+            for (i = 0; i < nrEvents; ++i) {
+                /* Recive new request from new clinet via listenFd */
+                if (events[i].data.fd == listenFd) {
+                    fd = accept(listenFd, NULL, NULL);
+                    if (fd < 0) {
+                        fprintf(logFile, "accept() error.\n");
+                        goto err1;
+                    }
+                    event.data.fd = fd;
+                    event.events = EPOLLIN;
+                    epoll_ctl(epfd, EPOLL_CTL_ADD, fd, &event);
+                }
+                /* Recive command from connected client */
+                else if (events[i].events & EPOLLIN) {
+                    fd = events[i].data.fd;
+                    if (doFileEvent(fd) == 1) {
+                        epoll_ctl(epfd, EPOLL_CTL_DEL, fd, &event);
+                        close(fd);
+                    }
+                }
             }
-            doFileEvent(fd);
 
+            /* Calculate remaining time for timeout */
             gettimeofday(&nowTime, NULL);
             outTime = ((startTime.tv_sec + 3) * 1000000 + startTime.tv_usec) - (nowTime.tv_sec * 1000000 + nowTime.tv_usec);
             outTime /= 1000;
