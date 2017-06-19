@@ -1,6 +1,7 @@
 #ifndef __TKV_H
 #define __TKV_H
 #include <stdio.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>

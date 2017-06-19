@@ -78,7 +78,7 @@ int doDel(const char *key) {
 }
 
 int doWrong(int fd) {
-    answer(fd, "Format Error");
+    answer(fd, "Format Error\n");
     return 0;
 }
 
@@ -125,6 +125,7 @@ int doFileEvent(int fd) {
             goto err1;
         }
         answer(fd, value);
+        answer(fd, "\n");
 
     } else if (strcasecmp(motion, "SET") == 0) {
         token = strtok(NULL, delim);
@@ -142,7 +143,7 @@ int doFileEvent(int fd) {
             doWrong(fd);
             goto err1;
         }
-        answer(fd, "SetOK");
+        answer(fd, "SetOK\n");
 
     } else if (strcasecmp(motion, "DEL") == 0) {
         token = strtok(NULL, delim);
@@ -152,7 +153,7 @@ int doFileEvent(int fd) {
             doWrong(fd);
             goto err1;
         }
-        answer(fd, "DelOK");
+        answer(fd, "DelOK\n");
 
     } else {
         fprintf(logFile, "doFileEvent() fail: Paser fail.\n");
